@@ -1,18 +1,8 @@
-# Код определения APNG:
-# https://stackoverflow.com/a/62367135
-# Код поиска файлов с нужным расширением:
-# https://stackoverflow.com/a/3964691
-# Код прогрессбара:
-# https://stackoverflow.com/a/34482761
-# Код для склонения слова "секунда":
-# https://ru.stackoverflow.com/a/1106147
-# Код мигания окна на панели задач:
-# https://stackoverflow.com/a/42182714
-
 import os
 import sys
 import time
 import ctypes
+import argparse
 
 def progressbar(it, prefix="", size=60, file=sys.stdout):
     count = len(it)
@@ -39,35 +29,72 @@ def is_apng(a: bytes):
 def check_path(path: str):
     if os.path.exists(path):
         if os.path.isdir(path):
-            print("Директория подтверждена.\n")
+            print(strings["dir_confirned"][lang])
             return True
         else:
-            print("Объект не является директорией.")
+            print(strings["not_a_dir"][lang])
     else:
-        print("Неверный путь.")
+        print(strings["wrong_path"][lang])
     return False
 
-def conv(n): 
-    es = ['у', 'ы', '']
-    n = n % 100
-    if n>=11 and n<=19:
-        s=es[2] 
-    else:
-        i = n % 10
-        if i == 1:
-            s = es[0] 
-        elif i in [2,3,4]:
-            s = es[1] 
+def conv(n, lang):
+    if lang == 0:
+        es = ['s', '']
+        
+        if n == 1:
+            s = es[1]
         else:
+            s = es[0]
+    
+    elif lang == 1:
+        es = ['у', 'ы', '']
+        n = n % 100
+        
+        if n >= 11 and n <= 19:
             s = es[2] 
+        else:
+            i = n % 10
+            
+            if i == 1:
+                s = es[0] 
+            elif i in [2,3,4]:
+                s = es[1] 
+            else:
+                s = es[2]
+        
     return s
 
-print("Введите директорию для сканирования.")
-print("Для текущей директории оставьте поле пустым.")
-print("Для отмены поиска введите значение -1.\n")
+parser = argparse.ArgumentParser(description="Search of APNGs in directories.")
+parser.add_argument("-r", "--ru", action="store_true", help="Set the language to Russian (Русский).")
+
+lang = int((parser.parse_args().ru) == True)
+strings = {
+"dir_confirned": ["Directory confirmed.\n", "Директория подтверждена.\n"],
+"not_a_dir": ["This object is not a directory.\n", "Объект не является директорией.\n"],
+"wrong_path": ["Wrong path.\n", "Неверный путь.\n"],
+"start_1": ["Enter the directory for scanning.", "Введите директорию для сканирования."],
+"start_2": ["For the current directory, enter nothing.", "Для текущей директории введите пустое значение."],
+"start_3": ["For cancelling the search, enter -1 value.\n", "Для отмены поиска введите значение -1.\n"],
+"path": ["Path:\n", "Путь:\n"],
+"current_dir": ["Current directory:\n", "Текущая директория:\n"],
+"searching": ["\n[{}] Searching for PNG-files...", "\n[{}] Проводится поиск PNG-файлов..."],
+"finished_in": ["[{}] Operation finished in {} second{}.", "[{}] Операция завершена за {} секунд{}."],
+"found_pngs_num": ["Total number of PNGs found: ", "Всего найдено PNG: "],
+"pngs_analysis": ["\n[{}] Analyzing PNG files...", "\n[{}] Проводится анализ PNG-файлов..."],
+"files_analysis": ["Files analysis: ", "Анализ файлов: "],
+"found_apngs_num": ["Total number of APNGs found: ", "Всего найдено APNG: "],
+"found_apngs_list": ["\nFounds APNGs:", "\nНайденные APNG:"],
+"finished": ["\nPress enter to exit.", "\nДля завершения работы нажмите Enter."],
+"cancelled": ["\nThe search is cancelled. Shutting down...", "\nПоиск отменён. Завершаю работу..."]
+}
+
+# Path input
+print(strings["start_1"][lang])
+print(strings["start_2"][lang])
+print(strings["start_3"][lang])
 path = ""
 while path == "":
-    path = input("Путь:\n")
+    path = input(strings["path"][lang])
     if path == "":
         path = os.getcwd()
     elif path != "-1":
@@ -75,47 +102,50 @@ while path == "":
             path = ""
 
 if path != "-1":
-    print("Текущая директория:\n" + path)
-
+    print(strings["current_dir"][lang] + path)
+    
     time_start = time.time()
-    print("\n[{}] Проводится поиск PNG-файлов...".format(time.ctime(time_start)))
-
+    print(strings["searching"][lang].format(time.ctime(time_start)))
+    
+    # PNGs search
     png_list = []
     for root, dirs, files in os.walk(path):
         for file in files:
             if file.endswith(".png") or file.endswith(".apng"):
                 png_list.append(os.path.join(root, file))
     png_num = len(png_list)
-
+    
     time_end = time.time()
     time_elapsed = round(time_end - time_start)
-    print("[{}] Операция завершена за {} секунд{}.".format(time.ctime(time_end), time_elapsed, conv(time_elapsed)))
-    print("Всего найдено PNG: " + str(png_num))
+    print(strings["finished_in"][lang].format(time.ctime(time_end), time_elapsed, conv(time_elapsed, lang)))
+    print(strings["found_pngs_num"][lang] + str(png_num))
     
     if png_num > 0:
         time_start = time.time()
-        print("\n[{}] Проводится анализ PNG-файлов...".format(time.ctime(time_start)))
-
+        print(strings["pngs_analysis"][lang].format(time.ctime(time_start)))
+        
+        # APNGs search
         apng_list = []
-        for png in progressbar(range(png_num), "Анализ файлов: ", 40):
+        for png in progressbar(range(png_num), strings["files_analysis"][lang], 40):
             f = open(png_list[png], "rb")
             file = f.read()
             if is_apng(file):
                 apng_list.append(png_list[png])
             f.close()
         apng_num = len(apng_list)
-
+        
         time_end = time.time()
         time_elapsed = round(time_end - time_start)
-        print("[{}] Операция завершена за {} секунд{}.".format(time.ctime(time_end), time_elapsed, conv(time_elapsed)))
-        print("Всего найдено APNG: " + str(apng_num))
+        print(strings["finished_in"][lang].format(time.ctime(time_end), time_elapsed, conv(time_elapsed, lang)))
+        print(strings["found_apngs_num"][lang] + str(apng_num))
+        
         if apng_num > 0:
-            print("\nНайденные APNG:")
+            print(strings["found_apngs_list"][lang])
             for apng in apng_list:
                 print(apng)
-
+    
     ctypes.windll.user32.FlashWindow(ctypes.windll.kernel32.GetConsoleWindow(), True)
-    input("\nДля завершения работы нажмите Enter.")
+    input(strings["finished"][lang])
 else:
-    print("Поиск отменён. Завершаю работу.")
-    time.sleep(3)
+    print(strings["cancelled"][lang])
+    time.sleep(2.5)
